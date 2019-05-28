@@ -7,10 +7,24 @@ from flask_sqlalchemy import SQLAlchemy
 import logging
 from logging.handlers import RotatingFileHandler
 
+
 # 设置mysql连接对象
 db = SQLAlchemy()
 # 定义全局redis_store
 redis_store = None
+
+
+def setUpLogging(level):
+    "根据开发环境配置日志等级"
+
+    # 设置日志等级
+    logging.basicConfig(level=level)
+    # 创建日志记录器, 指定日志保存路径,每个文件大小
+    file_log_handler = RotatingFileHandler("log/backstore.log", maxBytes=1024 * 1024 * 100, backupCount=10)
+    # 日志记录格式
+    formatter = logging.Formatter('%(levelname)s %(filename)s:%(lineno)d %(message)s')
+    file_log_handler.setFormatter(formatter)
+    logging.getLogger().addHandler(file_log_handler)
 
 
 def get_app(config_name):
@@ -26,17 +40,12 @@ def get_app(config_name):
     global redis_store
     redis_store = redis.StrictRedis(host=configs[config_name].REDIS_HOST, port=configs[config_name].REDIS_PORT)
 
+    from backstage.api_1_0 import api
+    app.register_blueprint(api)
+
+    # 初始化日志设置
+    setUpLogging(level=configs[config_name].LOGGING_LEVEL)
+
+    print(app.url_map)
+
     return app
-
-
-def setUpLogging(level):
-    "根据开发环境配置日志等级"
-
-    # 设置日志等级
-    logging.basicConfig(level=level)
-    # 创建日志记录器, 指定日志保存路径,每个文件大小
-    file_log_handler = RotatingFileHandler("log/log", maxBytes=1024 * 1024 * 100, backupCount=10)
-    # 日志记录格式
-    formatter = logging.Formatter('%(levelname)s %(filename)s:%(lineno)d %(message)s')
-    file_log_handler.addFilter(formatter)
-    logging.getLogger().addHandler(file_log_handler)

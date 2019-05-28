@@ -1,4 +1,7 @@
 import redis
+import pymysql
+import logging
+from DBUtils.PooledDB import PooledDB, SharedDBConnection
 
 
 class Config(object):
@@ -11,7 +14,7 @@ class Config(object):
     SESSION_REDIS = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT)
     SESSION_USE_SIGNER = True
 
-    PERMANENT_SESSION_LIFETIME = 31
+    # PERMANENT_SESSION_LIFETIME = 31
     SESSION_COOKIE_NAME = 'session'
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SECURE = True
@@ -22,18 +25,33 @@ class Config(object):
     JSONIFY_PRETTYPRINT_REGULAR = True
     JSONIFY_MIMETYPE = 'application/json'
 
-    SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://bk:123456@127.0.0.1:6379/backstore'
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    POOL = PooledDB(
+        creator=pymysql,
+        maxconnections=10,
+        mincached=2,
+        maxcached=6,
+        maxshared=3,
+        blocking=True,
+        maxusage=None,
+        setsession=[],
+        ping=0,
+        host='127.0.0.1',
+        port=3306,
+        user='bk',
+        password='123456',
+        database='backstore',
+        charset='utf8'
+    )
 
 
 class Development(Config):
     """开发环境"""
-    pass
+    LOGGING_LEVEL = logging.DEBUG
 
 
 class Production(Config):
     """生产环境"""
-    pass
+    LOGGING_LEVEL = logging.INFO
 
 
 configs = {

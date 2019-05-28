@@ -23,19 +23,7 @@ class User(BaseModel):
     id_card_number = db.Column(db.String(25), unique=True, nullable=False)
     role = db.Column(db.String(10), nullable=False)
 
-    # 生成一个属性,并带有setter和getter方法
 
-    @property
-    def password(self):
-        return AttributeError("can not read")
-
-    @password.setter
-    def password(self, value):
-        self.password_hash = generate_password_hash(value)
-
-    def check_password(self, password):
-        """校验密码"""
-        return check_password_hash(self.password_hash, password)
 
 
 class Order(BaseModel):
