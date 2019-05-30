@@ -7,7 +7,7 @@ from . import api
 from backstage.utils.response_code import RET
 from backstage.sql import SqlHelper
 from werkzeug.security import check_password_hash, generate_password_hash
-from ..utils.common import login_require
+from ..utils.common import login_require, admin_require
 
 
 @api.route('/register', methods=['POST'])
@@ -20,17 +20,18 @@ def register():
     real_name = result_dict['realName']
     mobile = result_dict['mobile']
     role = result_dict['role']
+    reg_time = time.strftime('%Y-%m-%d %H:%M:%S')
 
     if not re.match(r'^1([38][0-9]|4[579]|5[0-3,5-9]|6[6]|7[0135678]|9[89])\d{8}$', mobile):
         return jsonify(status=RET.PARAMERR, msg='请输入正确手机号码')
 
     try:
         sql = """
-        insert into user (job_number, name, password_hash, real_name, mobile, role) values
-        (%s, %s, %s, %s, %s, %s)
+        insert into user (job_number, name, password_hash, real_name, mobile, role, reg_time) values
+        (%s, %s, %s, %s, %s, %s, %s)
         """
 
-        SqlHelper.execute(sql, [job_number, name, password_hash, real_name, mobile, role])
+        SqlHelper.execute(sql, [job_number, name, password_hash, real_name, mobile, role, reg_time])
     except Exception as e:
         current_app.logger.error(e)
         return jsonify(status=RET.DATAEXIST, msg='账号已存在')
@@ -59,7 +60,10 @@ def login():
 
     session['name'] = name
 
-    return jsonify(status=RET.OK, msg="登录成功")
+    if has_user['role'] == '管理员':
+        return jsonify(status=RET.OK, msg='登录成功', name=name, permission=True)
+
+    return jsonify(status=RET.OK, msg="登录成功", name=name, permission=False)
 
 
 @api.route('/logout', methods=['DELETE'])
@@ -69,6 +73,52 @@ def logout():
     session.pop('name')
 
     return jsonify(status=RET.OK, msg='退出登录成功')
+
+
+@api.route('/changeInfo', methods=['POST'])
+@login_require
+@admin_require
+def change_info():
+    """修改用户信息"""
+    result_dict = request.json
+    name = result_dict['name']
+    old_password = result_dict['oldPassword']
+    new_password = result_dict['newPassword']
+    confirm_password = result_dict['confirmPassword']
+
+    password_hash = generate_password_hash(new_password)
+    sql = "update user set password_hash=%s where name=%s"
+    SqlHelper.execute(sql, [name])
+
+    return jsonify(status=RET.OK, msg='密码修改成功')
+
+
+@api.route('/profile', methods=['GET'])
+def profile():
+    """查询用户资料"""
+    result_dict = request.json
+    name = result_dict['name']
+    sql = "select * from user where name=%s"
+    result = SqlHelper.fetch_one(sql, [name])
+    return jsonify(name=result['name'], jobNumber=result['job_number'], realName=result['real_name'],
+                   mobile=result['mobile'], idCardNumber=result['id_card_number'])
+
+
+@api.route('/user_list', methods=['POST'])
+@login_require
+def user_list():
+    """获取用户列表"""
+    sql = "select * from user"
+    result = SqlHelper.fetch_all(sql=sql)
+    return jsonify(regTime=result['reg_time'], name=result['name'], jobNumber=result['job_number'],
+                   realName=result['real_name'], mobile=result['mobile'], role=result['role'])
+
+
+@api.route('/change_user', methods=['POST'])
+@login_require
+def change_user():
+    """修改用户"""
+    pass
 
 
 def generate_token(key, expire=86400):
@@ -95,3 +145,4 @@ def certify_token(key, token):
     if calc_sha1_tsstr != known_sha1_tsstr:
         return False
     return True
+
