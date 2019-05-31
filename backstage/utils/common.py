@@ -24,8 +24,8 @@ def admin_require(view_func):
 
     @wraps(view_func)
     def wrapper(*args, **kwargs):
-        name = g['user_name']
-        result = SqlHelper.fetch_one('select role from user where name=%s' % name)
+        name = session.get('name')
+        result = SqlHelper.fetch_one('select role from user where name=%s', [name])
         if result['role'] != '管理员':
             return jsonify(status=RET.PERMISSIONERR, msg='权限不足')
         else:

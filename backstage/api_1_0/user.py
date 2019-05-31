@@ -2,7 +2,7 @@ import base64
 import time
 import hmac
 import re
-from flask import request, session, g, current_app, jsonify
+from flask import request, session, g, current_app, jsonify, make_response
 from . import api
 from backstage.utils.response_code import RET
 from backstage.sql import SqlHelper
@@ -59,11 +59,20 @@ def login():
         return jsonify(status=RET.USERERR, msg="用户不存在或者密码错误")
 
     session['name'] = name
+    token = generate_token(name)
+
+    user_info = SqlHelper.fetch_one("select * from user where name=%s", [name])
 
     if has_user['role'] == '管理员':
-        return jsonify(status=RET.OK, msg='登录成功', name=name, permission=True)
+        response = jsonify(status=RET.OK, msg='登录成功', name=name, permission=True, token=token,
+                           mobile=user_info['mobile'], jobNumber=user_info['job_number'], realName=user_info['real_name'])
+        # response.set_cookie('name', name, max_age=86400)
+        return response
 
-    return jsonify(status=RET.OK, msg="登录成功", name=name, permission=False)
+    response = jsonify(status=RET.OK, msg="登录成功", name=name, permission=False, token=token,
+                       mobile=user_info['mobile'], jobNumber=user_info['job_number'], realName=user_info['real_name'])
+
+    return response
 
 
 @api.route('/logout', methods=['DELETE'])
@@ -75,7 +84,7 @@ def logout():
     return jsonify(status=RET.OK, msg='退出登录成功')
 
 
-@api.route('/changeInfo', methods=['POST'])
+@api.route('/change/password', methods=['POST'])
 @login_require
 @admin_require
 def change_info():
@@ -88,12 +97,13 @@ def change_info():
 
     password_hash = generate_password_hash(new_password)
     sql = "update user set password_hash=%s where name=%s"
-    SqlHelper.execute(sql, [name])
+    SqlHelper.execute(sql, [password_hash, name])
 
     return jsonify(status=RET.OK, msg='密码修改成功')
 
 
-@api.route('/profile', methods=['GET'])
+@api.route('/profile', methods=['POST'])
+@login_require
 def profile():
     """查询用户资料"""
     result_dict = request.json
@@ -104,17 +114,43 @@ def profile():
                    mobile=result['mobile'], idCardNumber=result['id_card_number'])
 
 
-@api.route('/user_list', methods=['POST'])
+@api.route('/user/all', methods=['POST'])
 @login_require
+@admin_require
 def user_list():
     """获取用户列表"""
-    sql = "select * from user"
-    result = SqlHelper.fetch_all(sql=sql)
-    return jsonify(regTime=result['reg_time'], name=result['name'], jobNumber=result['job_number'],
-                   realName=result['real_name'], mobile=result['mobile'], role=result['role'])
+    result_dict = request.json
+    name = result_dict['name']
+    real_name = result_dict['realName']
+    role = result_dict['role']
+    sql = "select * from user where "
+    if name:
+        sql = sql + f" name=\'{name}\' " + " and "
+
+    if real_name:
+        sql = sql + f" real_name=\'{real_name}\' " + " and "
+
+    if role and role != '全部':
+        sql = sql + f" role=\'{role}\' "
+    else:
+        sql = sql[:-4]
+
+    result_list = SqlHelper.fetch_all(sql=sql)
+    temp_list = []
+    for result in result_list:
+        temp_dict = {}
+        temp_dict['regTime'] = result['reg_time']
+        temp_dict['name'] = result['name']
+        temp_dict['jobNumber'] = result['job_number']
+        temp_dict['realName'] = result['real_name']
+        temp_dict['mobile'] = result['mobile']
+        temp_dict['role'] = result['role']
+        temp_list.append(temp_dict)
+
+    return make_response(jsonify(userList=temp_list))
 
 
-@api.route('/change_user', methods=['POST'])
+@api.route('/change/user', methods=['POST'])
 @login_require
 def change_user():
     """修改用户"""

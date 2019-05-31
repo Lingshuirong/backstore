@@ -21,6 +21,7 @@ class RET(object):
     FORMATERR = "4502"
     ACCOUNTERR = "4503"
     PERMISSIONERR = "4504"
+    ORDERERR = "4505"
 
 
 error_map = {
@@ -43,5 +44,6 @@ error_map = {
     RET.UNKOWNERR: "未知错误",
     RET.FORMATERR: "邮箱格式错误",
     RET.ACCOUNTERR: "账号不存在",
-    RET.PERMISSIONERR: "权限不足"
+    RET.PERMISSIONERR: "权限不足",
+    RET.ORDERERR: "订单提交错误"
 }
