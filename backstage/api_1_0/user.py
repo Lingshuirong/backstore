@@ -1,19 +1,18 @@
-import base64
 import time
-import hmac
 import re
-from flask import request, session, g, current_app, jsonify, make_response
+from flask import request, session, jsonify, make_response
 from . import api
 from backstage.utils.response_code import RET
 from backstage.sql import SqlHelper
 from werkzeug.security import check_password_hash, generate_password_hash
-from ..utils.common import login_require, admin_require
+from ..utils.common import generate_token, certify_token
 
 
 @api.route('/register', methods=['POST'])
 def register():
     """添加用户"""
     result_dict = request.json
+    cookie = request.cookies.get('token')
     job_number = result_dict['jobNumber']
     name = result_dict['name']
     password_hash = generate_password_hash(result_dict['password'])
@@ -25,18 +24,16 @@ def register():
     if not re.match(r'^1([38][0-9]|4[579]|5[0-3,5-9]|6[6]|7[0135678]|9[89])\d{8}$', mobile):
         return jsonify(status=RET.PARAMERR, msg='请输入正确手机号码')
 
-    try:
-        sql = """
-        insert into user (job_number, name, password_hash, real_name, mobile, role, reg_time) values
-        (%s, %s, %s, %s, %s, %s, %s)
-        """
+    sql = """
+    insert into user (job_number, name, password_hash, real_name, mobile, role, reg_time) values
+    (%s, %s, %s, %s, %s, %s, %s)
+    """
 
-        SqlHelper.execute(sql, [job_number, name, password_hash, real_name, mobile, role, reg_time])
-    except Exception as e:
-        current_app.logger.error(e)
+    status = SqlHelper.execute(sql, [job_number, name, password_hash, real_name, mobile, role, reg_time])
+    if status:
+        return jsonify(status=RET.OK, msg='用户添加成功')
+    else:
         return jsonify(status=RET.DATAEXIST, msg='账号已存在')
-
-    return jsonify(status=RET.OK, msg='用户添加成功')
 
 
 @api.route('/login', methods=['POST'])
@@ -66,7 +63,6 @@ def login():
     if has_user['role'] == '管理员':
         response = jsonify(status=RET.OK, msg='登录成功', name=name, permission=True, token=token,
                            mobile=user_info['mobile'], jobNumber=user_info['job_number'], realName=user_info['real_name'])
-        # response.set_cookie('name', name, max_age=86400)
         return response
 
     response = jsonify(status=RET.OK, msg="登录成功", name=name, permission=False, token=token,
@@ -76,7 +72,6 @@ def login():
 
 
 @api.route('/logout', methods=['DELETE'])
-@login_require
 def logout():
     """处理用户退出登录"""
     session.pop('name')
@@ -85,8 +80,6 @@ def logout():
 
 
 @api.route('/change/password', methods=['POST'])
-@login_require
-@admin_require
 def change_info():
     """修改用户信息"""
     result_dict = request.json
@@ -103,20 +96,20 @@ def change_info():
 
 
 @api.route('/profile', methods=['POST'])
-@login_require
 def profile():
     """查询用户资料"""
     result_dict = request.json
     name = result_dict['name']
     sql = "select * from user where name=%s"
     result = SqlHelper.fetch_one(sql, [name])
-    return jsonify(name=result['name'], jobNumber=result['job_number'], realName=result['real_name'],
-                   mobile=result['mobile'], idCardNumber=result['id_card_number'])
+    if result:
+        return jsonify(name=result['name'], jobNumber=result['job_number'], realName=result['real_name'],
+                       mobile=result['mobile'], idCardNumber=result['id_card_number'])
+    else:
+        return jsonify(status=RET.DBERR, msg='查询用户资料出错')
 
 
 @api.route('/user/all', methods=['POST'])
-@login_require
-@admin_require
 def user_list():
     """获取用户列表"""
     result_dict = request.json
@@ -151,34 +144,10 @@ def user_list():
 
 
 @api.route('/change/user', methods=['POST'])
-@login_require
 def change_user():
     """修改用户"""
     pass
 
 
-def generate_token(key, expire=86400):
-    ts_str = str(time.time() + expire)
-    ts_byte = ts_str.encode("utf-8")
-    sha1_tshexstr = hmac.new(key.encode("utf-8"), ts_byte, 'sha1').hexdigest()
-    token = ts_str + ':' + sha1_tshexstr
-    b64_token = base64.urlsafe_b64encode(token.encode("utf-8"))
-    return b64_token.decode("utf-8")
 
-
-#  验证token 入参：用户id 和 token
-def certify_token(key, token):
-    token_str = base64.urlsafe_b64decode(token).decode('utf-8')
-    token_list = token_str.split(':')
-    if len(token_list) != 2:
-        return False
-    ts_str = token_list[0]
-    if float(ts_str) < time.time():
-        return False
-    known_sha1_tsstr = token_list[1]
-    sha1 = hmac.new(key.encode("utf-8"), ts_str.encode('utf-8'), 'sha1')
-    calc_sha1_tsstr = sha1.hexdigest()
-    if calc_sha1_tsstr != known_sha1_tsstr:
-        return False
-    return True
 

@@ -1,4 +1,4 @@
-import re
+# import re
 from . import api
 from flask import request, jsonify
 from backstage.utils.response_code import RET
@@ -27,14 +27,17 @@ def order():
                 temp_list.append(status['paid_status'])
 
             if '待支付' in temp_list:
-                return jsonify(status=RET.ORDERERR, msg="请勿重复提交。如果已支付完成，工作人员将会联系您！")
+                return jsonify(status=RET.ORDERERR, msg="请勿重复提交。如已支付,工作人员将会联系您!")
 
         sql = "insert into order_tb (recommand_job_number, name, id_card_number, mobile, bank_card_number, pre_paid_amnount," \
               " commit_datetime, update_datetime) " \
               "values (%s, %s, %s, %s, %s, %s, %s, %s)"
         date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        SqlHelper.execute(sql, [job_number, name, id_card_number, mobile, bank_card, pre_paid, date, date])
-        return jsonify(status=RET.OK, msg='订单提交成功')
+        status = SqlHelper.execute(sql, [job_number, name, id_card_number, mobile, bank_card, pre_paid, date, date])
+        if status:
+            return jsonify(status=RET.OK, msg='订单提交成功')
+        else:
+            return jsonify(status=RET.DBERR, msg="订单提交失败,请重新提交")
     elif request.method == 'GET':
         job_number = request.args.get('referralNum')
         result = SqlHelper.fetch_one('select * from user where job_number=%s', [job_number])
@@ -55,24 +58,31 @@ def order_list():
     page = int(result_dict['page'])
     rows = int(result_dict['rows'])
 
-    sql = """
-        select commit_datetime, name, id_card_number, bank_number, mobile, job_number, pre_paid_amount, paid_status 
-        from order_tb where 
-    """
-
-    if job_number:
-        sql = sql + f" job_number=\'{job_number}\'" + " and "
-
-    if status:
-        sql = sql + f" paid_status=\'{status}\'" + " and "
-
-    if s_date and e_date:
-        sql = sql + f" commit_datetime between \'{s_date}\' and \'{e_date}\' " + " and "
-
-    if name_or_mobile:
-        sql = sql + f" name like \'%{name_or_mobile}\'% or \'%{name_or_mobile}%\' "
+    if any([job_number, status, s_date, e_date, name_or_mobile]):
+        sql = """
+            select commit_datetime, name, id_card_number, bank_number, mobile, job_number, pre_paid_amount, paid_status
+             from order_tb limit 
+        """
     else:
-        sql = sql[:-4]
+
+        sql = """
+            select commit_datetime, name, id_card_number, bank_number, mobile, job_number, pre_paid_amount, paid_status 
+            from order_tb 
+        """
+
+        if job_number:
+            sql = sql + f" job_number=\'{job_number}\'" + " and "
+
+        if status:
+            sql = sql + f" paid_status=\'{status}\'" + " and "
+
+        if s_date and e_date:
+            sql = sql + f" commit_datetime between \'{s_date}\' and \'{e_date}\' " + " and "
+
+        if name_or_mobile:
+            sql = sql + f" name like \'%{name_or_mobile}\'% or \'%{name_or_mobile}%\' "
+        else:
+            sql = sql[:-4]
 
     page = (page - 1) * rows
     sql = sql + f" limit {page},{rows}"
@@ -94,5 +104,15 @@ def order_list():
     return jsonify(info_list=data_list)
 
 
-
+@api.route('/order/operation', methods=['DELETE', 'POST'])
+def operation():
+    if request.method == 'POST':
+        "修改订单信息"
+        pass
+    else:
+        "删除订单"
+        order_id = request.args.get('orderId')
+        sql = f"delete from order_tb where id={order_id}"
+        SqlHelper.execute(sql)
+        return jsonify(status=RET.OK, msg="删除成功")
 

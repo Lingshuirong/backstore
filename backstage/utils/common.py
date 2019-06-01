@@ -1,7 +1,9 @@
 from functools import wraps
-from flask import session, jsonify, g
+from flask import session, jsonify, g, current_app
 from .response_code import RET
 from backstage.sql import SqlHelper
+from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
+from itsdangerous import SignatureExpired, BadSignature
 
 
 def login_require(view_func):
@@ -32,3 +34,21 @@ def admin_require(view_func):
             return view_func(*args, **kwargs)
 
     return wrapper
+
+
+def generate_token(api_users):
+    expiration = 3600
+    s = Serializer(current_app.config['SECRET_KEY'], expires_in=expiration) #expiration是过期时间
+    token = s.dumps({'id': api_users.id}).decode('ascii')
+    return token, expiration
+
+
+def certify_token(token):
+    s = Serializer(current_app.config.SECRET_KEY)
+    try:
+        data = s.loads(token)
+        return data
+    except SignatureExpired:
+        return None  # valid token,but expired
+    except BadSignature:
+        return None  # invalid token

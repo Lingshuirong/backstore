@@ -13,11 +13,11 @@ class Config(object):
     SESSION_TYPE = 'redis'
     SESSION_REDIS = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT)
     SESSION_USE_SIGNER = True
-    PERMANENT_SESSION_LIFETIME = 86400
+    PERMANENT_SESSION_LIFETIME = 7200
     SESSION_COOKIE_NAME = 'session'
-    SESSION_COOKIE_HTTPONLY = True
-    SESSION_COOKIE_SECURE = True
-    SESSION_REFRESH_EACH_REQUEST = True
+    # SESSION_COOKIE_HTTPONLY = True
+    # SESSION_COOKIE_SECURE = True
+    # SESSION_REFRESH_EACH_REQUEST = True
 
     JSON_AS_ASCII = False
     JSON_SORT_KEYS = True
@@ -41,6 +41,8 @@ class Config(object):
         database='backstore',
         charset='utf8'
     )
+
+    FILE_PATH = '/opt/image/'
 
 
 class Development(Config):

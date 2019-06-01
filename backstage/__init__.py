@@ -6,6 +6,7 @@ from config import configs
 from flask_sqlalchemy import SQLAlchemy
 import logging
 from logging.handlers import RotatingFileHandler
+from flask_cors import CORS
 
 
 # 设置mysql连接对象
@@ -47,5 +48,8 @@ def get_app(config_name):
     setUpLogging(level=configs[config_name].LOGGING_LEVEL)
 
     print(app.url_map)
+
+    # 设置跨域
+    CORS(app, supports_credentials=True)
 
     return app

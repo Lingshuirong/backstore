@@ -1,5 +1,4 @@
 import pymysql
-# from flask.config import Config
 from flask import current_app
 
 
@@ -19,25 +18,35 @@ class SqlHelper(object):
 
     @classmethod
     def fetch_one(cls, sql, *args, cursor=pymysql.cursors.DictCursor):
-        conn, cursor = cls.open(cursor)
-        cursor.execute(sql, args[0])
-        obj = cursor.fetchone()
-        cls.close(conn, cursor)
-        return obj
+        try:
+            conn, cursor = cls.open(cursor)
+            cursor.execute(sql, args[0])
+            obj = cursor.fetchone()
+            cls.close(conn, cursor)
+            return obj
+        except Exception as e:
+            current_app.logger.error(e)
+            return False
 
     @classmethod
     def fetch_all(cls, sql, *args, cursor=pymysql.cursors.DictCursor):
-        conn, cursor = cls.open(cursor)
-        cursor.execute(sql, args[0])
-        obj = cursor.fetchall()
-        cls.close(conn, cursor)
-
-        return obj
+        try:
+            conn, cursor = cls.open(cursor)
+            cursor.execute(sql, args[0])
+            obj = cursor.fetchall()
+            cls.close(conn, cursor)
+            return obj
+        except Exception as e:
+            current_app.logger.error(e)
+            return False
 
     @classmethod
     def execute(cls, sql, *args, cursor=pymysql.cursors.DictCursor):
-        conn, cursor = cls.open(cursor)
-        cursor.execute(sql, args[0])
-        cls.close(conn, cursor)
-
-
+        try:
+            conn, cursor = cls.open(cursor)
+            cursor.execute(sql, args[0])
+            cls.close(conn, cursor)
+            return True
+        except Exception as e:
+            current_app.logger.error(e)
+            return False
