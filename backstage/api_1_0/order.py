@@ -1,9 +1,9 @@
-# import re
 from . import api
 from flask import request, jsonify
 from backstage.utils.response_code import RET
 from backstage.sql import SqlHelper
 from datetime import datetime
+from backstage.utils.common import login_require
 
 
 @api.route('/order', methods=['POST', 'GET'])
@@ -50,6 +50,8 @@ def order():
 @api.route('/order_list', methods=['POST'])
 def order_list():
     result_dict = request.json
+    token = request.cookies.get('token', '')
+    login_require(token)
     job_number = result_dict['job']
     status = result_dict['status']
     s_date = result_dict['sDate']

@@ -5,7 +5,7 @@ from . import api
 from backstage.utils.response_code import RET
 from backstage.sql import SqlHelper
 from werkzeug.security import check_password_hash, generate_password_hash
-from ..utils.common import generate_token, certify_token
+from ..utils.common import generate_token, login_require
 
 
 @api.route('/register', methods=['POST'])
@@ -62,11 +62,14 @@ def login():
 
     if has_user['role'] == '管理员':
         response = jsonify(status=RET.OK, msg='登录成功', name=name, permission=True, token=token,
-                           mobile=user_info['mobile'], jobNumber=user_info['job_number'], realName=user_info['real_name'])
+                           mobile=user_info['mobile'], jobNumber=user_info['job_number'],
+                           realName=user_info['real_name'], uid=user_info['id'])
         return response
 
     response = jsonify(status=RET.OK, msg="登录成功", name=name, permission=False, token=token,
-                       mobile=user_info['mobile'], jobNumber=user_info['job_number'], realName=user_info['real_name'])
+                       mobile=user_info['mobile'], jobNumber=user_info['job_number'], realName=user_info['real_name'],
+                       uid=user_info['id']
+                       )
 
     return response
 
@@ -83,6 +86,8 @@ def logout():
 def change_info():
     """修改用户信息"""
     result_dict = request.json
+    token = request.cookies.get('token')
+    login_require(token)
     name = result_dict['name']
     old_password = result_dict['oldPassword']
     new_password = result_dict['newPassword']
@@ -99,6 +104,8 @@ def change_info():
 def profile():
     """查询用户资料"""
     result_dict = request.json
+    token = request.cookies.get('token', '')
+    login_require(token)
     name = result_dict['name']
     sql = "select * from user where name=%s"
     result = SqlHelper.fetch_one(sql, [name])
@@ -113,6 +120,8 @@ def profile():
 def user_list():
     """获取用户列表"""
     result_dict = request.json
+    token = request.cookies.get('token', '')
+    login_require(token)
     name = result_dict['name']
     real_name = result_dict['realName']
     role = result_dict['role']
@@ -146,8 +155,6 @@ def user_list():
 @api.route('/change/user', methods=['POST'])
 def change_user():
     """修改用户"""
-    pass
-
-
-
-
+    result_dict = request.json
+    token = request.cookies.get('token', '')
+    login_require(token)

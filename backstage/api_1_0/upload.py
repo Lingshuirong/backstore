@@ -9,18 +9,21 @@ from flask import request, jsonify
 from config import Config
 from backstage.sql import SqlHelper
 from backstage.utils.response_code import RET
+from backstage.utils.common import login_require
 
 
 @api.route('/images/uploaded', methods=['POST'])
 def upload():
     """上传图片"""
 
+    token = request.cookies.get('token', '')
+    login_require(token)
     if os.path.exists(Config.FILE_PATH):
         os.makedirs(Config.FILE_PATH)
 
     url_list = []
     result_dict = request.json
-    user_id = result_dict['userId']
+    name = result_dict['name']
     temp_lsit = result_dict['data'].split(',')
     img_data = base64.b64decode(temp_lsit[1])
     img_formate = re.findall(r'/(.*);', temp_lsit[0])[0]
@@ -34,7 +37,7 @@ def upload():
 
     img_url_str = ";".join(url_list)
     sql = "insert into sys_info (user_id, qr_url) values (%s, %s) "
-    SqlHelper.execute(sql, [user_id, img_url_str])
+    SqlHelper.execute(sql, [name, img_url_str])
 
     return jsonify(status=RET.OK, msg="图片上传成功")
 

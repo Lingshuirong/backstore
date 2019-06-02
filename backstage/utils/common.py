@@ -4,21 +4,22 @@ from .response_code import RET
 from backstage.sql import SqlHelper
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 from itsdangerous import SignatureExpired, BadSignature
+from config import Config
 
 
-def login_require(view_func):
-    """判断用户是否已经登录"""
+# def login_require(view_func):
+#     """判断用户是否已经登录"""
+#
+#     @wraps(view_func)
+#     def wrapper(*args, **kwargs):
+#         user_name = session.get('name')
+#         if not user_name:
+#             return jsonify(status=RET.SESSIONERR, msg='用户未登录')
+#         else:
+#             g.user_name = user_name  # 当用户已经登录,用g变量记录用户的名字,方便被装饰的视图直接使用
+#             return view_func(*args, **kwargs)
 
-    @wraps(view_func)
-    def wrapper(*args, **kwargs):
-        user_name = session.get('name')
-        if not user_name:
-            return jsonify(status=RET.SESSIONERR, msg='用户未登录')
-        else:
-            g.user_name = user_name  # 当用户已经登录,用g变量记录用户的名字,方便被装饰的视图直接使用
-            return view_func(*args, **kwargs)
-
-    return wrapper
+    # return wrapper
 
 
 def admin_require(view_func):
@@ -36,15 +37,15 @@ def admin_require(view_func):
     return wrapper
 
 
-def generate_token(api_users):
-    expiration = 3600
+def generate_token(name):
+    expiration = 7200
     s = Serializer(current_app.config['SECRET_KEY'], expires_in=expiration) #expiration是过期时间
-    token = s.dumps({'id': api_users.id}).decode('ascii')
+    token = s.dumps({'name': name}).decode('ascii')
     return token, expiration
 
 
 def certify_token(token):
-    s = Serializer(current_app.config.SECRET_KEY)
+    s = Serializer(Config.SECRET_KEY)
     try:
         data = s.loads(token)
         return data
@@ -52,3 +53,11 @@ def certify_token(token):
         return None  # valid token,but expired
     except BadSignature:
         return None  # invalid token
+
+
+def login_require(token):
+    if token:
+        if not certify_token(token):
+            return jsonify(status=RET.PERMISSIONERR, msg='超时，请重新登录')
+    else:
+        return jsonify(status=RET.PERMISSIONERR, msg='无效口令')
