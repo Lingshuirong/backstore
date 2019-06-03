@@ -41,7 +41,7 @@ def generate_token(name):
     expiration = 7200
     s = Serializer(current_app.config['SECRET_KEY'], expires_in=expiration) #expiration是过期时间
     token = s.dumps({'name': name}).decode('ascii')
-    return token, expiration
+    return token
 
 
 def certify_token(token):
@@ -58,6 +58,6 @@ def certify_token(token):
 def login_require(token):
     if token:
         if not certify_token(token):
-            return jsonify(status=RET.PERMISSIONERR, msg='超时，请重新登录')
+            return "超时登录"
     else:
-        return jsonify(status=RET.PERMISSIONERR, msg='无效口令')
+        return None

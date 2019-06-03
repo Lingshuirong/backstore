@@ -1,4 +1,5 @@
 from . import api
+import os
 import re
 import base64
 import random
@@ -9,40 +10,67 @@ from flask import request, jsonify
 from config import Config
 from backstage.sql import SqlHelper
 from backstage.utils.response_code import RET
-from backstage.utils.common import login_require
+from backstage.utils.common import certify_token
 
 
-@api.route('/images/uploaded', methods=['POST'])
+@api.route('/images/upload', methods=['POST'])
 def upload():
     """上传图片"""
 
-    token = request.cookies.get('token', '')
-    login_require(token)
-    if os.path.exists(Config.FILE_PATH):
+    token = request.headers.get('token')
+    if token:
+        if not certify_token(token):
+            return jsonify(status=RET.PERMISSIONERR, msg='超时登录')
+    else:
+        return jsonify(status=RET.PERMISSIONERR, msg='无效口令')
+    if not os.path.exists(Config.FILE_PATH):
         os.makedirs(Config.FILE_PATH)
 
-    url_list = []
     result_dict = request.json
-    name = result_dict['name']
-    temp_lsit = result_dict['data'].split(',')
+    data = result_dict['data']
+    name = data[0]['name']
+
+    temp_lsit = data[0]['thumbUrl'].split(',')
     img_data = base64.b64decode(temp_lsit[1])
-    img_formate = re.findall(r'/(.*);', temp_lsit[0])[0]
-    img_name = Config.FILE_PATH + "".join(random.sample(string.ascii_letters + string.digits, 16)) \
-               + str(int(time.time() * 1000)) + "." + img_formate
+    # img_formate = re.findall(r'/(.*);', temp_lsit[0])[0]
 
-    url_list.append(img_name)
-
-    with open(img_name, 'wb') as f:
+    with open(Config.FILE_PATH + name, 'wb') as f:
         f.write(img_data)
 
-    img_url_str = ";".join(url_list)
-    sql = "insert into sys_info (user_id, qr_url) values (%s, %s) "
-    SqlHelper.execute(sql, [name, img_url_str])
+    sql = "insert into sys_info (qr_url) values (%s) "
+    SqlHelper.execute(sql, [name])
 
     return jsonify(status=RET.OK, msg="图片上传成功")
 
 
-@api.route('/images/query')
+@api.route('/change/image', methods=['GET', 'DELETE'])
 def get_img():
     """系统设置页面获取图片"""
-    pass
+    if request.method == 'GET':
+        file_list = SqlHelper.fetch_all('select qr_url from sys_info')[0]
+        img_content_list = []
+        for file in file_list:
+            temp_dict = {}
+            temp_dict['name'] = file['qr_url']
+            temp_dict['content'] = get_img_content(file['qr_url'])
+            img_content_list.append(temp_dict)
+        return jsonify(img_list=img_content_list, status=RET.OK)
+    elif request.method == 'DELETE':
+        name = request.args.get('name')
+        SqlHelper.execute('delete from sys_info where qr_url=%s', [name])
+        try:
+            os.remove(Config.FILE_PATH + name)
+        except Exception:
+            pass
+        return jsonify(status=RET.OK, msg='删除成功')
+
+
+def get_img_content(file):
+    with open(Config.FILE_PATH + file, 'rb') as f:
+        content = f.read()
+    b64_content = base64.b64encode(content)
+
+    return b64_content.decode()
+
+
+

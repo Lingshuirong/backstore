@@ -3,7 +3,7 @@ from flask import request, jsonify
 from backstage.utils.response_code import RET
 from backstage.sql import SqlHelper
 from datetime import datetime
-from backstage.utils.common import login_require
+from backstage.utils.common import certify_token
 
 
 @api.route('/order', methods=['POST', 'GET'])
@@ -50,9 +50,13 @@ def order():
 @api.route('/order_list', methods=['POST'])
 def order_list():
     result_dict = request.json
-    token = request.cookies.get('token', '')
-    login_require(token)
-    job_number = result_dict['job']
+    token = request.headers.get('token', '')
+    if token:
+        if not certify_token(token):
+            return jsonify(status=RET.PERMISSIONERR, msg='超时登录')
+    else:
+        return jsonify(status=RET.PERMISSIONERR, msg='无效口令')
+    job_number = result_dict.get('jobNumber', '')
     status = result_dict['status']
     s_date = result_dict['sDate']
     e_date = result_dict['eDate']
@@ -60,61 +64,68 @@ def order_list():
     page = int(result_dict['page'])
     rows = int(result_dict['rows'])
 
-    if any([job_number, status, s_date, e_date, name_or_mobile]):
+    if not any([job_number, status, s_date, e_date, name_or_mobile]):
         sql = """
-            select commit_datetime, name, id_card_number, bank_number, mobile, job_number, pre_paid_amount, paid_status
-             from order_tb limit 
+            select sql_calc_found_rows id, commit_datetime, name, id_card_number, bank_card_number, mobile, recommand_job_number, pre_paid_amount, 
+            paid_status from order_tb
         """
     else:
 
         sql = """
-            select commit_datetime, name, id_card_number, bank_number, mobile, job_number, pre_paid_amount, paid_status 
-            from order_tb 
+            select sql_calc_found_rows id, commit_datetime, name, id_card_number, bank_card_number, mobile, recommand_job_number, 
+            pre_paid_amount, paid_status from order_tb where
         """
 
         if job_number:
-            sql = sql + f" job_number=\'{job_number}\'" + " and "
+            sql = sql + f" recommand_job_number=\'{job_number}\'" + " and "
 
         if status:
             sql = sql + f" paid_status=\'{status}\'" + " and "
 
         if s_date and e_date:
-            sql = sql + f" commit_datetime between \'{s_date}\' and \'{e_date}\' " + " and "
+            sql = sql + f" commit_datetime between \'{s_date} 00:00:00\' and \'{e_date} 23:59:59\' " + " and "
 
         if name_or_mobile:
-            sql = sql + f" name like \'%{name_or_mobile}\'% or \'%{name_or_mobile}%\' "
+            sql = sql + f" name like \'%{name_or_mobile}%\' or mobile like \'%{name_or_mobile}%\' "
         else:
             sql = sql[:-4]
 
     page = (page - 1) * rows
     sql = sql + f" limit {page},{rows}"
 
-    result_list = SqlHelper.fetch_all(sql)
+    result_list, total = SqlHelper.fetch_all(sql=sql)
     data_list = []
-    for result in result_list:
-        temp_dict = {}
-        temp_dict['commitDatetime'] = result['commit_datetime']
-        temp_dict['name'] = result['name']
-        temp_dict['idCardNumber'] = result['id_card_number']
-        temp_dict['bankNumber'] = result['bank_number']
-        temp_dict['mobile'] = result['mobile']
-        temp_dict['jobNumber'] = result['job_number']
-        temp_dict['prePaidAmount'] = result['pre_paid_amount']
-        temp_dict['paidStatus'] = result['paid_status']
-        data_list.append(temp_dict)
-
-    return jsonify(info_list=data_list)
-
-
-@api.route('/order/operation', methods=['DELETE', 'POST'])
-def operation():
-    if request.method == 'POST':
-        "修改订单信息"
-        pass
+    if result_list:
+        for result in result_list:
+            temp_dict = {}
+            temp_dict['commitDatetime'] = result['commit_datetime']
+            temp_dict['name'] = result['name']
+            temp_dict['idCardNumber'] = result['id_card_number']
+            temp_dict['bankNumber'] = result['bank_card_number']
+            temp_dict['mobile'] = result['mobile']
+            temp_dict['jobNumber'] = result['recommand_job_number']
+            temp_dict['prePaidAmount'] = result['pre_paid_amount']
+            temp_dict['paidStatus'] = result['paid_status']
+            temp_dict['orderId'] = result['id']
+            data_list.append(temp_dict)
     else:
-        "删除订单"
-        order_id = request.args.get('orderId')
-        sql = f"delete from order_tb where id={order_id}"
-        SqlHelper.execute(sql)
-        return jsonify(status=RET.OK, msg="删除成功")
+        data_list = None
 
+    return jsonify(info_list=data_list, status=RET.OK, total=total['total'])
+
+
+@api.route('/order/update', methods=['POST'])
+def update_order():
+    """更新订单状态"""
+
+    result_dict = request.json
+    token = request.headers.get('token', '')
+    if token:
+        if not certify_token(token):
+            return jsonify(status=RET.PERMISSIONERR, msg='超时登录')
+    else:
+        return jsonify(status=RET.PERMISSIONERR, msg='无效口令')
+    order_id = result_dict['orderId']
+    sql = "update order_tb set paid_status=%s where id=%s"
+    SqlHelper.execute(sql, ['已支付', order_id])
+    return jsonify(status=RET.OK, msg='订单状态更新')

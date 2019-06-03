@@ -20,7 +20,10 @@ class SqlHelper(object):
     def fetch_one(cls, sql, *args, cursor=pymysql.cursors.DictCursor):
         try:
             conn, cursor = cls.open(cursor)
-            cursor.execute(sql, args[0])
+            if args:
+                cursor.execute(sql, args[0])
+            else:
+                cursor.execute(sql)
             obj = cursor.fetchone()
             cls.close(conn, cursor)
             return obj
@@ -32,10 +35,23 @@ class SqlHelper(object):
     def fetch_all(cls, sql, *args, cursor=pymysql.cursors.DictCursor):
         try:
             conn, cursor = cls.open(cursor)
-            cursor.execute(sql, args[0])
-            obj = cursor.fetchall()
-            cls.close(conn, cursor)
-            return obj
+            if args:
+                cursor.execute(sql, args[0])
+                obj = cursor.fetchall()
+
+                cls.close(conn, cursor)
+                return obj
+            else:
+                cursor.execute(sql)
+                obj = cursor.fetchall()
+                if "sql_calc_found_rows" in sql:
+                    cursor.execute("select found_rows() as total")
+                    total = cursor.fetchone()
+                else:
+                    total = 0
+
+                cls.close(conn, cursor)
+                return obj, total
         except Exception as e:
             current_app.logger.error(e)
             return False
@@ -44,9 +60,13 @@ class SqlHelper(object):
     def execute(cls, sql, *args, cursor=pymysql.cursors.DictCursor):
         try:
             conn, cursor = cls.open(cursor)
-            cursor.execute(sql, args[0])
+            if args:
+                cursor.execute(sql, args[0])
+            else:
+                cursor.execute(sql)
             cls.close(conn, cursor)
             return True
         except Exception as e:
             current_app.logger.error(e)
             return False
+
