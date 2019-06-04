@@ -97,7 +97,7 @@ def change_info():
     new_password = result_dict['newPassword']
     confirm_password = result_dict['confirmPassword']
 
-    result = SqlHelper.execute('select password_hash from user where name=%s', [name])
+    result = SqlHelper.fetch_one('select password_hash from user where name=%s', [name])
     if not result:
         return jsonify(status=RET.DATAERR, msg='用户不存在')
     else:
