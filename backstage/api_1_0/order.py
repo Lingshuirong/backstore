@@ -29,7 +29,7 @@ def order():
             if '待支付' in temp_list:
                 return jsonify(status=RET.ORDERERR, msg="请勿重复提交。如已支付,工作人员将会联系您!")
 
-        sql = "insert into order_tb (recommand_job_number, name, id_card_number, mobile, bank_card_number, pre_paid_amnount," \
+        sql = "insert into order_tb (recommand_job_number, name, id_card_number, mobile, bank_card_number, pre_paid_amount," \
               " commit_datetime, update_datetime) " \
               "values (%s, %s, %s, %s, %s, %s, %s, %s)"
         date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')

@@ -1,12 +1,7 @@
 from . import api
-import os
-import re
 import base64
-import random
-import string
-import time
 import os
-from flask import request, jsonify
+from flask import request, jsonify, current_app
 from config import Config
 from backstage.sql import SqlHelper
 from backstage.utils.response_code import RET
@@ -60,17 +55,20 @@ def get_img():
         SqlHelper.execute('delete from sys_info where qr_url=%s', [name])
         try:
             os.remove(Config.FILE_PATH + name)
-        except Exception:
-            pass
+        except Exception as e:
+            current_app.logger.error(e)
         return jsonify(status=RET.OK, msg='删除成功')
 
 
 def get_img_content(file):
+    name_list = file.split('.')
     with open(Config.FILE_PATH + file, 'rb') as f:
         content = f.read()
     b64_content = base64.b64encode(content)
 
-    return b64_content.decode()
+    pre_format = "data:image/%s;base64,%s" % (name_list[1], b64_content.decode())
+
+    return pre_format
 
 
 

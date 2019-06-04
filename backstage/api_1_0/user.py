@@ -192,7 +192,7 @@ def change_user():
     token = request.headers.get('token', '')
     if request.method == 'DELETE':
 
-        name = request.args.get('name')
+        user_id = request.args.get('id')
 
         if token:
             if not certify_token(token):
@@ -200,7 +200,7 @@ def change_user():
         else:
             return jsonify(status=RET.PERMISSIONERR, msg='无效口令')
 
-        SqlHelper.execute("delete from user where name=%s ", [name])
+        SqlHelper.execute("delete from user where id=%s ", [user_id])
 
         return jsonify(status=RET.OK, msg="删除用户成功")
     else:
@@ -209,9 +209,15 @@ def change_user():
         job_number = result_dict['jobNumber']
         role = result_dict['role']
         real_name = result_dict['realName']
-        mobile = result_dict['obile']
-        password = result_dict['password']
+        mobile = result_dict['mobile']
+        password = result_dict.get('password', '')
         user_id = result_dict['id']
-        sql = "update user set name=%s, password_hash=%s, job_number%s, real_name=%s, mobile=%s, role=%s where id=%s"
-        SqlHelper.execute(sql, [name, generate_password_hash(password), job_number, real_name, mobile, role, user_id])
-        return jsonify(status=RET.OK, msg="修改用户信息成功")
+        if not password:
+            sql = "update user set name=%s, job_number=%s, real_name=%s, mobile=%s, role=%s where id=%s"
+            SqlHelper.execute(sql, [name, job_number, real_name, mobile, role, user_id])
+            return jsonify(status=RET.OK, msg="修改用户信息成功")
+        else:
+            sql = "update user set name=%s, password_hash=%s, job_number=%s, real_name=%s, mobile=%s, role=%s where id=%s"
+            SqlHelper.execute(sql,
+                              [name, generate_password_hash(password), job_number, real_name, mobile, role, user_id])
+            return jsonify(status=RET.OK, msg="修改用户信息成功")
