@@ -69,31 +69,39 @@ def order_list():
             select sql_calc_found_rows id, commit_datetime, name, id_card_number, bank_card_number, mobile, recommand_job_number, pre_paid_amount, 
             paid_status from order_tb
         """
+        count_sql = "select count(*) as total from order_tb;"
     else:
 
         sql = """
             select sql_calc_found_rows id, commit_datetime, name, id_card_number, bank_card_number, mobile, recommand_job_number, 
             pre_paid_amount, paid_status from order_tb where
         """
+        count_sql = "select count(*) as total from order_tb where "
 
         if job_number:
             sql = sql + f" recommand_job_number=\'{job_number}\'" + " and "
+            count_sql = count_sql + f" recommand_job_number=\'{job_number}\'" + " and "
 
         if status:
             sql = sql + f" paid_status=\'{status}\'" + " and "
+            count_sql = count_sql + f" paid_status=\'{status}\'" + " and "
 
         if s_date and e_date:
             sql = sql + f" commit_datetime between \'{s_date} 00:00:00\' and \'{e_date} 23:59:59\' " + " and "
+            count_sql = count_sql + f" commit_datetime between \'{s_date} 00:00:00\' and \'{e_date} 23:59:59\' " + " and "
 
         if name_or_mobile:
             sql = sql + f" name like \'%{name_or_mobile}%\' or mobile like \'%{name_or_mobile}%\' "
+            count_sql = count_sql + f" name like \'%{name_or_mobile}%\' or mobile like \'%{name_or_mobile}%\' "
         else:
             sql = sql[:-4]
+            count_sql = count_sql[:-4]
 
     page = (page - 1) * rows
     sql = sql + f" limit {page},{rows}"
 
-    result_list, total = SqlHelper.fetch_all(sql=sql)
+    result_list = SqlHelper.fetch_all(sql=sql)
+    total = SqlHelper.fetch_one(sql=count_sql)
     data_list = []
     if result_list:
         for result in result_list:

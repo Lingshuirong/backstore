@@ -149,24 +149,31 @@ def user_list():
     page = (page - 1) * rows
 
     if not any([name, real_name, role]):
-        sql = f"SELECT sql_calc_found_rows name, job_number, real_name, mobile, role, reg_time, id FROM  user limit {page}, {rows}"
+        sql = f"SELECT name, job_number, real_name, mobile, role, reg_time, id FROM  user limit {page}, {rows}"
+        sql_count = "select count(*) as total from user;"
 
     else:
-        sql = "select sql_calc_found_rows name, job_number, real_name, mobile, role, reg_time, id from user where "
+        sql = "select name, job_number, real_name, mobile, role, reg_time, id from user where "
+        sql_count = "select count(*) as total from user where "
         if name:
             sql = sql + f" name like \'%{name}%\' " + " and "
+            sql_count = sql_count + f" name like \'%{name}%\' " + " and "
 
         if real_name:
             sql = sql + f" real_name like \'%{real_name}%\' " + " and "
+            sql_count = sql_count + f" real_name like \'%{real_name}%\' " + " and "
 
         if role and role != '全部':
             sql = sql + f" role=\'{role}\' "
+            sql_count = sql_count + f" role=\'{role}\' "
         else:
             sql = sql[:-4]
+            sql_count = sql_count[:-4]
 
         sql = sql + f' limit {page}, {rows}'
 
-    result_list, total = SqlHelper.fetch_all(sql=sql)
+    result_list = SqlHelper.fetch_all(sql=sql)
+    total = SqlHelper.fetch_one(sql=sql_count)
     temp_list = []
     if result_list:
         for result in result_list:

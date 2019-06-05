@@ -44,17 +44,12 @@ class SqlHelper(object):
             else:
                 cursor.execute(sql)
                 obj = cursor.fetchall()
-                if "sql_calc_found_rows" in sql:
-                    cursor.execute("select found_rows() as total")
-                    total = cursor.fetchone()
-                else:
-                    total = 0
 
                 cls.close(conn, cursor)
-                return obj, total
+                return obj
         except Exception as e:
             current_app.logger.error(e)
-            return False
+            return []
 
     @classmethod
     def execute(cls, sql, *args, cursor=pymysql.cursors.DictCursor):

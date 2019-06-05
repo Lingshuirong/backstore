@@ -42,7 +42,7 @@ def upload():
 def get_img():
     """系统设置页面获取图片"""
     if request.method == 'GET':
-        file_list = SqlHelper.fetch_all('select qr_url from sys_info')[0]
+        file_list = SqlHelper.fetch_all('select qr_url from sys_info')
         img_content_list = []
         for file in file_list:
             temp_dict = {}
