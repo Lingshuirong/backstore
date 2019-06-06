@@ -45,7 +45,9 @@ class SqlHelper(object):
                 cursor.execute(sql)
                 obj = cursor.fetchall()
 
-                cls.close(conn, cursor)
+                # cls.close(conn, cursor)
+                cursor.close()
+                conn.close()
                 return obj
         except Exception as e:
             current_app.logger.error(e)
