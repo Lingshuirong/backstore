@@ -118,6 +118,7 @@ def order_list():
                 temp_dict['orderId'] = result['id']
                 data_list.append(temp_dict)
         except Exception as e:
+            print(e, result_list)
             current_app.logger.error(e)
             current_app.logger.info(result_list)
     else:
