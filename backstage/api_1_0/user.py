@@ -192,6 +192,7 @@ def user_list():
             current_app.logger.error(e)
             current_app.logger.info(result_list)
     else:
+        current_app.logger.info(result_list)
         temp_list = None
 
     return make_response(jsonify(userList=temp_list, status=0, total=total['total']))

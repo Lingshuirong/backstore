@@ -122,6 +122,7 @@ def order_list():
             current_app.logger.error(e)
             current_app.logger.info(result_list)
     else:
+        current_app.logger.info(result_list)
         data_list = None
 
     return jsonify(info_list=data_list, status=RET.OK, total=total['total'])
