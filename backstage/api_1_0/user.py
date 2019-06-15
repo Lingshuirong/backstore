@@ -1,6 +1,6 @@
 import time
 import re
-from flask import request, session, jsonify, make_response
+from flask import request, session, jsonify, make_response, current_app
 from . import api
 from backstage.utils.response_code import RET
 from backstage.sql import SqlHelper
@@ -176,17 +176,23 @@ def user_list():
     total = SqlHelper.fetch_one(sql=sql_count)
     temp_list = []
     if result_list:
-        for result in result_list:
-            temp_dict = {}
-            temp_dict['regTime'] = result['reg_time']
-            temp_dict['name'] = result['name']
-            temp_dict['jobNumber'] = result['job_number']
-            temp_dict['realName'] = result['real_name']
-            temp_dict['mobile'] = result['mobile']
-            temp_dict['role'] = result['role']
-            temp_dict['id'] = result['id']
-            temp_list.append(temp_dict)
+        try:
+            for result in result_list:
+                temp_dict = {}
+                temp_dict['regTime'] = result['reg_time']
+                temp_dict['name'] = result['name']
+                temp_dict['jobNumber'] = result['job_number']
+                temp_dict['realName'] = result['real_name']
+                temp_dict['mobile'] = result['mobile']
+                temp_dict['role'] = result['role']
+                temp_dict['id'] = result['id']
+                temp_list.append(temp_dict)
+        except Exception as e:
+            print(e, result_list)
+            current_app.logger.error(e)
+            current_app.logger.info(result_list)
     else:
+        current_app.logger.info(result_list)
         temp_list = None
 
     return make_response(jsonify(userList=temp_list, status=0, total=total['total']))

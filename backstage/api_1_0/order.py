@@ -1,5 +1,5 @@
 from . import api
-from flask import request, jsonify
+from flask import request, jsonify, current_app
 from backstage.utils.response_code import RET
 from backstage.sql import SqlHelper
 from datetime import datetime
@@ -104,19 +104,25 @@ def order_list():
     total = SqlHelper.fetch_one(sql=count_sql)
     data_list = []
     if result_list:
-        for result in result_list:
-            temp_dict = {}
-            temp_dict['commitDatetime'] = result['commit_datetime']
-            temp_dict['name'] = result['name']
-            temp_dict['idCardNumber'] = result['id_card_number']
-            temp_dict['bankNumber'] = result['bank_card_number']
-            temp_dict['mobile'] = result['mobile']
-            temp_dict['jobNumber'] = result['recommand_job_number']
-            temp_dict['prePaidAmount'] = result['pre_paid_amount']
-            temp_dict['paidStatus'] = result['paid_status']
-            temp_dict['orderId'] = result['id']
-            data_list.append(temp_dict)
+        try:
+            for result in result_list:
+                temp_dict = {}
+                temp_dict['commitDatetime'] = result['commit_datetime']
+                temp_dict['name'] = result['name']
+                temp_dict['idCardNumber'] = result['id_card_number']
+                temp_dict['bankNumber'] = result['bank_card_number']
+                temp_dict['mobile'] = result['mobile']
+                temp_dict['jobNumber'] = result['recommand_job_number']
+                temp_dict['prePaidAmount'] = result['pre_paid_amount']
+                temp_dict['paidStatus'] = result['paid_status']
+                temp_dict['orderId'] = result['id']
+                data_list.append(temp_dict)
+        except Exception as e:
+            print(e, result_list)
+            current_app.logger.error(e)
+            current_app.logger.info(result_list)
     else:
+        current_app.logger.info(result_list)
         data_list = None
 
     return jsonify(info_list=data_list, status=RET.OK, total=total['total'])

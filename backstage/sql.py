@@ -36,12 +36,14 @@ class SqlHelper(object):
         try:
             conn, cursor = cls.open(cursor)
             if args:
+                current_app.logger.info(sql)
                 cursor.execute(sql, args[0])
                 obj = cursor.fetchall()
 
                 cls.close(conn, cursor)
                 return obj
             else:
+                current_app.logger.info(sql)
                 cursor.execute(sql)
                 obj = cursor.fetchall()
 
