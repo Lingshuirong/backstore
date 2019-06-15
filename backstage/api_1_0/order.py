@@ -66,14 +66,14 @@ def order_list():
 
     if not any([job_number, status, s_date, e_date, name_or_mobile]):
         sql = """
-            select sql_calc_found_rows id, commit_datetime, name, id_card_number, bank_card_number, mobile, recommand_job_number, pre_paid_amount, 
+            select id, commit_datetime, name, id_card_number, bank_card_number, mobile, recommand_job_number, pre_paid_amount, 
             paid_status from order_tb
         """
         count_sql = "select count(*) as total from order_tb;"
     else:
 
         sql = """
-            select sql_calc_found_rows id, commit_datetime, name, id_card_number, bank_card_number, mobile, recommand_job_number, 
+            select id, commit_datetime, name, id_card_number, bank_card_number, mobile, recommand_job_number, 
             pre_paid_amount, paid_status from order_tb where
         """
         count_sql = "select count(*) as total from order_tb where "

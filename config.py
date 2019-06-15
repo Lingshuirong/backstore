@@ -1,7 +1,7 @@
 import redis
 import pymysql
 import logging
-from DBUtils.PooledDB import PooledDB, SharedDBConnection
+from DBUtils.PooledDB import PooledDB
 
 
 class Config(object):
@@ -27,7 +27,7 @@ class Config(object):
     POOL = PooledDB(
         creator=pymysql,
         maxconnections=10,
-        mincached=2,
+        mincached=5,
         maxcached=6,
         maxshared=3,
         blocking=True,
